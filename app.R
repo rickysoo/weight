@@ -1,5 +1,6 @@
 library(shiny)
 library(shinythemes)
+library(ggplot2)
 
 min_height <- 100
 max_height <- 220
@@ -32,7 +33,7 @@ ui <- fluidPage(
         ),
         
         mainPanel(
-            h3('Linear Regression Model'),
+            h3(textOutput('answer')),
             plotOutput('graph')
         )
     )
@@ -54,7 +55,7 @@ server <- function(input, output, session) {
     
     getWeight <- function(height) {
         weight <- predict(getModel(), data.frame(height = height))
-        return(weight)
+        return(round(weight))
     }
     
     output$height <- renderUI({
@@ -77,10 +78,26 @@ server <- function(input, output, session) {
         )
     })
     
+    output$answer <- renderText({
+        sprintf('Your height is %d cm, so your weight must be %d kg!', values$height, values$weight)
+    })
+    
     output$graph <- renderPlot({
-        plot(x, y, col = "blue", main = "From Height to Weight", abline(getModel()), cex = 1.3, pch = 16, xlab = "Height in cm", ylab = "Weight in kg", xlim = c(min_height, max_height), ylim = c(min_weight, max_weight))
-        abline(v = values$height, col = 'green')
-        abline(h = values$weight, col = 'green')
+        intercept <- getModel()$coefficients[[1]]
+        slope <- getModel()$coefficients[[2]]
+        
+        ggplot() +
+            geom_point(mapping = aes(x = x, y = y)) +
+            geom_abline(intercept = intercept, slope = slope) +
+            geom_vline(xintercept = values$height, color = 'red', linetype = 'dashed') +
+            geom_hline(yintercept = values$weight, color = 'red', linetype = 'dashed') +
+            labs(x = 'Height (cm)', y = 'Weight (kg)') +
+            theme(
+                axis.title = element_text(face = 'bold', size = 14),
+                plot.background = element_blank(),
+                panel.background = element_blank(),
+                panel.grid.major.y = element_line(color = 'grey')
+            )
     })
     
     observeEvent(input$height, {
